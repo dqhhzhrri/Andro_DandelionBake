@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <!-- Meta viewport khusus Mobile App: Mencegah zoom otomatis dan menyesuaikan skala layar -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <!-- Theme color untuk status bar Android -->
+    <meta name="theme-color" content="#14403a">
+    <title>Dandelion Bake App</title>
+    
+    <!-- CDNs React & Babel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js" crossorigin></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js" crossorigin></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- LEAFLET CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        :root {
+            --color-yellow: #FFF24B;
+            --color-green: #14403a;
+            --color-black-bg: #1a1a1a;
+            --color-brown-bg: #5d3a3a;
+            --color-grey-placeholder: #f0f0f0;
+            --header-height: 60px;
+            --bottom-nav-height: 65px;
+            --android-shadow: 0 4px 6px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05);
+            --android-dialog-shadow: 0 11px 15px -7px rgba(0,0,0,0.2), 0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Roboto', 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            background-color: #f7f8fa; /* Soft grey background for Android */
+            color: #333;
+            overflow-x: hidden;
+            overscroll-behavior-y: none;
+        }
+
+        #root { 
+            display: flex; flex-direction: column; 
+            min-height: 100vh; 
+            padding-top: var(--header-height); 
+            padding-bottom: calc(var(--bottom-nav-height) + 15px);
+        }
+
+        a { text-decoration: none; color: inherit; }
+        ul { list-style: none; }
+        img { width: 100%; height: auto; display: block; object-fit: cover; }
+        button { outline: none; -webkit-tap-highlight-color: transparent; }
+
+        .app-header {
+            position: fixed; top: 0; left: 0; width: 100%; height: var(--header-height);
+            background-color: var(--color-green); color: white; z-index: 1000;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .logo-area { display: flex; align-items: center; font-weight: bold; font-size: 1.1rem; gap: 10px; }
+        .logo-area img { width: 35px; height: 35px; border-radius: 50%; }
+        
+        .header-actions { display: flex; gap: 18px; font-size: 1.3rem; }
+        .header-actions i { padding: 5px; cursor: pointer; }
+
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: var(--bottom-nav-height);
+            background-color: white; border-top: 1px solid #e0e0e0; z-index: 1000;
+            display: flex; justify-content: space-around; align-items: center;
+            padding-bottom: env(safe-area-inset-bottom);
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
+        }
+
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: #888; font-size: 0.65rem; gap: 4px; flex: 1; height: 100%; cursor: pointer;
+            position: relative; transition: color 0.2s;
+        }
+        
+        .nav-item.active { color: var(--color-green); font-weight: bold; }
+        .nav-item i { font-size: 1.25rem; transition: transform 0.2s; }
+        .nav-item.active i { transform: scale(1.1); }
+
+        .cart-badge {
+            position: absolute; top: 6px; right: 25%; background: #e53935; color: white;
+            font-size: 0.6rem; font-weight: bold; padding: 2px 5px; border-radius: 10px;
+            min-width: 18px; text-align: center; border: 2px solid white;
+        }
+
+        .container { width: 100%; padding: 0 15px; }
+        .hidden { display: none !important; }
+        
+        /* Mobile-First Grids */
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        .grid-1 { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        
+        /* Card Styles */
+        .android-card {
+            background: white; border-radius: 12px; box-shadow: var(--android-shadow);
+            overflow: hidden; margin-bottom: 20px; padding: 15px;
+        }
+
+        .hero-section { height: 220px; width: 100%; position: relative; overflow: hidden; background: var(--color-black-bg); }
+        .hero-carousel { height: 100%; width: 100%; }
+        .carousel-item { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; opacity: 0.7; }
+        
+        .featured-categories { position: relative; top: -30px; z-index: 10; padding: 0 15px; }
+        .featured-box { background: white; border-radius: 12px; box-shadow: var(--android-shadow); text-align: center; padding-bottom: 10px; overflow: hidden; }
+        .featured-box img { height: 100px; }
+        .featured-box h3 { font-size: 0.8rem; margin-top: 8px; color: var(--color-green); }
+
+        .home-products { padding: 10px 15px 30px; }
+        .section-title { font-size: 1.3rem; font-weight: bold; color: var(--color-green); margin-bottom: 15px; }
+        
+        .product-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: var(--android-shadow); }
+        .product-card img { height: 140px; }
+        .product-info { padding: 12px; }
+        .product-title { font-weight: bold; font-size: 0.85rem; color: #333; margin-bottom: 4px; line-height: 1.2; height: 30px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;}
+        .product-price { color: var(--color-green); font-weight: bold; font-size: 0.9rem; }
+        .product-pax { font-size: 0.7rem; color: #888; font-weight: normal; }
+
+        .pd-image-header { width: 100%; height: 280px; background: #ddd; }
+        .pd-content { background: white; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 25px 20px; margin-top: -20px; position: relative; z-index: 5; box-shadow: 0 -4px 10px rgba(0,0,0,0.05); min-height: 50vh; }
+        .pd-content h1 { font-size: 1.5rem; color: var(--color-green); margin-bottom: 5px; }
+        .pd-content .price { font-size: 1.3rem; font-weight: bold; color: #2e7d32; margin-bottom: 20px; }
+        
+        .btn-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        .btn-option { flex: 1; padding: 10px; border: 1.5px solid var(--color-green); border-radius: 8px; background: white; color: var(--color-green); font-weight: bold; text-align: center; }
+        .btn-option.active { background: var(--color-green); color: white; }
+        
+        .qty-row { display: flex; align-items: center; justify-content: space-between; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }
+        .qty-controls { display: flex; align-items: center; gap: 15px; }
+        .qty-btn { width: 35px; height: 35px; border-radius: 50%; background: #f0f0f0; border: none; font-size: 1.2rem; font-weight: bold; color: var(--color-green); }
+        .btn-primary { width: 100%; padding: 15px; background: var(--color-green); color: white; font-weight: bold; font-size: 1rem; border-radius: 12px; border: none; margin-top: 20px; box-shadow: var(--android-shadow); }
+
+        .member-card { background: linear-gradient(135deg, #D4AF37 0%, #AA7C11 100%); color: white; padding: 25px; border-radius: 16px; box-shadow: var(--android-shadow); position: relative; overflow: hidden; margin-bottom: 25px; }
+        .member-tier { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
+        .member-points { font-size: 2.5rem; font-weight: bold; margin: 15px 0 5px; }
+        
+        .promo-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: var(--android-shadow); position: relative; height: 180px; display: flex; flex-direction: column; justify-content: flex-end; padding: 15px; color: white; margin-bottom: 15px; }
+        .promo-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.1)); z-index: 1; }
+        .promo-content { position: relative; z-index: 2; }
+        .promo-badge { background: var(--color-yellow); color: var(--color-green); padding: 3px 8px; border-radius: 8px; font-size: 0.7rem; font-weight: bold; display: inline-block; margin-bottom: 5px; }
+        .promo-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 5px; }
+
+        .cart-item { display: flex; background: white; padding: 15px; border-radius: 12px; margin-bottom: 12px; box-shadow: var(--android-shadow); align-items: center; gap: 15px; }
+        .cart-item img { width: 70px; height: 70px; border-radius: 8px; }
+        .cart-details { flex: 1; }
+        .cart-title { font-weight: bold; font-size: 0.9rem; margin-bottom: 4px; }
+        .cart-price { color: var(--color-green); font-weight: bold; font-size: 0.95rem; }
+        .delete-btn { color: #e53935; padding: 10px; font-size: 1.1rem; background: none; border: none; }
+        
+        .summary-card { background: white; padding: 20px; border-radius: 16px; box-shadow: var(--android-shadow); margin-top: 20px; }
+        .summary-row { display: flex; justify-content: space-between; font-size: 0.9rem; color: #555; margin-bottom: 10px; }
+        .summary-total { display: flex; justify-content: space-between; font-weight: bold; font-size: 1.1rem; color: var(--color-green); border-top: 1px solid #eee; padding-top: 15px; margin-top: 5px; }
+
+        .payment-method { border: 1.5px solid #e0e0e0; border-radius: 12px; padding: 15px; display: flex; align-items: center; gap: 15px; margin-bottom: 15px; background: white; }
+        .payment-method.active { border-color: var(--color-green); background: #f0f7f5; }
+        .payment-icon { font-size: 1.8rem; color: var(--color-green); width: 40px; text-align: center; }
+
+        .search-input { width: 100%; padding: 12px 20px; border-radius: 25px; border: 1px solid #ccc; font-size: 0.95rem; margin-bottom: 15px; background: white; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); }
+        .map-wrapper { width: 100%; height: 300px; border-radius: 16px; overflow: hidden; margin-bottom: 20px; border: 2px solid var(--color-green); box-shadow: var(--android-shadow); z-index: 1; }
+        
+        .store-list-item { background: white; padding: 15px; border-radius: 12px; box-shadow: var(--android-shadow); margin-bottom: 15px; display: flex; gap: 15px; }
+        .store-list-item img { width: 90px; height: 90px; border-radius: 8px; }
+        .store-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .store-info h4 { color: var(--color-green); font-size: 0.95rem; margin-bottom: 4px; }
+        .store-info p { font-size: 0.75rem; color: #777; line-height: 1.4; }
+
+        .radar-box { background: var(--color-yellow); border-radius: 16px; padding: 25px 20px; text-align: center; box-shadow: var(--android-shadow); margin-bottom: 30px; }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+        
+        /* Custom Dialog Alert/Confirm Android Style */
+        .android-dialog { background: white; width: 85%; max-width: 340px; border-radius: 12px; box-shadow: var(--android-dialog-shadow); overflow: hidden; animation: dialogPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .dialog-content { padding: 24px; font-size: 0.95rem; color: #333; line-height: 1.5; }
+        .dialog-actions { padding: 8px 16px 16px; display: flex; justify-content: flex-end; gap: 10px; }
+        .dialog-btn { background: transparent; border: none; color: var(--color-green); font-weight: bold; font-size: 0.9rem; padding: 8px 16px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .dialog-btn:active { background: rgba(20, 64, 58, 0.1); }
+
+        /* Full Bottom Sheet for Search/Profile */
+        .bottom-sheet { background: white; width: 100%; position: absolute; bottom: 0; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 25px; animation: slideUp 0.3s ease-out; max-height: 90vh; overflow-y: auto; }
+        
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes dialogPop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+        /* Highlight animation for searched store */
+        .store-highlight { border: 2px solid #D4AF37 !important; background: #fffde7 !important; transition: all 1s; }
+    </style>
+</head>
+<body>
+    
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const App = () => {
+            const LOGO_URL = "Assets/Logodandelionbake.png";
+            
+            // State Navigasi
+            const [currentView, setCurrentView] = useState('home-view');
+            const [productDetail, setProductDetail] = useState({ name: '', price: 0, img: '' });
+            const [cartItems, setCartItems] = useState([
+                { id: 'default-1', name: "4pc Cronut Gift Box", price: 65000, img: "https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=150&h=150&q=80", qty: 1, type: 'regular' }
+            ]);
+
+            // State Interaktif Custom Alert & Confirm (Pengganti window.alert)
+            const [dialog, setDialog] = useState({ isOpen: false, message: '', isConfirm: false, onConfirm: null });
+            
+            const showAlert = (message) => setDialog({ isOpen: true, message, isConfirm: false, onConfirm: null });
+            const showConfirm = (message, onConfirmCallback) => setDialog({ isOpen: true, message, isConfirm: true, onConfirm: onConfirmCallback });
+            const closeDialog = () => setDialog({ ...dialog, isOpen: false });
+
+            // State Modals Bawah (Bottom Sheets)
+            const [showSearch, setShowSearch] = useState(false);
+            const [searchInput, setSearchInput] = useState('');
+            const [showProfile, setShowProfile] = useState(false);
+            const [points, setPoints] = useState(8025);
+
+            // State Fitur Halaman
+            const [searchStoreQuery, setSearchStoreQuery] = useState('');
+            const [highlightedStoreId, setHighlightedStoreId] = useState(null);
+            
+            // Payment State
+            const [showPaymentGate, setShowPaymentGate] = useState(false);
+            const [selectedMethod, setSelectedMethod] = useState(null);
+
+            // Group Order State
+            const [groupStep, setGroupStep] = useState(1);
+            const [groupEvent, setGroupEvent] = useState('Kantor');
+            const [groupPax, setGroupPax] = useState(15);
+            
+            // Gacha State
+            const [isOpeningBox, setIsOpeningBox] = useState(false);
+            const [luckyPrize, setLuckyPrize] = useState(null);
+            
+            // Radar State
+            const [isScanning, setIsScanning] = useState(false);
+            const [scannedStore, setScannedStore] = useState(null);
+
+            // Data Peta (Dipertahankan Utuh)
+            const mapRef = useRef(null);
+            const mapInstance = useRef(null);
+            
+            const storeLocations = [
+                { id: 1, name: "Store Pusat Sukolilo", lat: -7.2823, lng: 112.7949, address: "Jl. Kampus ITS Sukolilo, SBY", img: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=300&q=80" },
+                { id: 2, name: "Store Rungkut Madya", lat: -7.3204, lng: 112.7845, address: "Jl. Rungkut Madya No.1, SBY", img: "https://images.unsplash.com/photo-1493770348161-369560ae357d?auto=format&fit=crop&w=300&q=80" },
+                { id: 3, name: "Store Waru Sidoarjo", lat: -7.3508, lng: 112.7279, address: "Jl. Raya Waru Sidoarjo", img: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=300&q=80" },
+                { id: 4, name: "Store Sambikerep", lat: -7.2652, lng: 112.6515, address: "Jl. Raya Sambikerep, SBY", img: "https://images.unsplash.com/photo-1517433367423-c7e5b0f35086?auto=format&fit=crop&w=300&q=80" },
+                { id: 9, name: "Store Jakarta Pusat", lat: -6.1944, lng: 106.8229, address: "Jl. MH Thamrin, Jakarta", img: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=300&q=80" },
+                { id: 10, name: "Store Braga Bandung", lat: -6.9175, lng: 107.6191, address: "Jl. Braga, Bandung", img: "https://images.unsplash.com/photo-1559925393-8be0ec4767c8?auto=format&fit=crop&w=300&q=80" }
+            ];
+
+            const groupPackages = {
+                Kantor: { name: "Corporate Coffee Break", price: 420000, img: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80", items: "5x Croissant, 5x Baguette, 5x Pound Cake" },
+                UlangTahun: { name: "Birthday Sweet Bundles", price: 580000, img: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=600&q=80", items: "1x Whole Cake, 8x Donat Lumer, 8x Cupcakes" },
+                Kasual: { name: "Picnic Party Sharing Box", price: 310000, img: "https://images.unsplash.com/photo-1618923850107-d1a234d7a73a?auto=format&fit=crop&w=600&q=80", items: "10x Cookie Shots, 5x Lava Cake, 5x Cinnamon" }
+            };
+
+            // Initialize Map
+            useEffect(() => {
+                if (currentView === 'store-view') {
+                    if (!mapInstance.current && mapRef.current) {
+                        mapInstance.current = L.map(mapRef.current, { zoomControl: false }).setView([-6.2, 106.8], 5);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance.current);
+                        storeLocations.forEach(store => {
+                            L.marker([store.lat, store.lng]).addTo(mapInstance.current)
+                             .bindPopup(`<div style="font-size:12px"><b>${store.name}</b><br>${store.address}</div>`);
+                        });
+                    }
+                    setTimeout(() => mapInstance.current?.invalidateSize(), 300);
+                }
+            }, [currentView]);
+
+            const switchView = (view) => {
+                setCurrentView(view);
+                window.scrollTo(0, 0);
+            };
+
+            const handleProductClick = (name, price, img) => {
+                setProductDetail({ name, price, img });
+                switchView('product-detail-view');
+            };
+
+            const handleAddToCart = () => {
+                const newItem = { id: `item-${Date.now()}`, name: productDetail.name, price: productDetail.price, img: productDetail.img, qty: 1, type: 'regular' };
+                setCartItems([...cartItems, newItem]);
+                switchView('chart-view');
+            };
+
+            const removeFromCart = (id) => {
+                showConfirm("Hapus item ini dari keranjang?", () => {
+                    setCartItems(cartItems.filter(item => item.id !== id));
+                });
+            };
+
+            const handleSearchStore = () => {
+                const query = searchStoreQuery.toLowerCase();
+                const found = storeLocations.find(s => s.name.toLowerCase().includes(query) || s.address.toLowerCase().includes(query));
+                if (found) {
+                    mapInstance.current?.setView([found.lat, found.lng], 14);
+                    setHighlightedStoreId(found.id);
+                    document.getElementById(`store-${found.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setTimeout(() => setHighlightedStoreId(null), 3000);
+                } else {
+                    showAlert("Store tidak ditemukan di area tersebut.");
+                }
+            };
+
+            const processPayment = () => {
+                if (!selectedMethod) return showAlert("Pilih metode pembayaran terlebih dahulu.");
+                showAlert("🎉 Pembayaran Berhasil! Pesanan sedang disiapkan dapur.");
+                setCartItems([]);
+                setShowPaymentGate(false);
+                switchView('home-view');
+            };
+
+            const handleGacha = () => {
+                setIsOpeningBox(true);
+                setLuckyPrize(null);
+                setTimeout(() => {
+                    setIsOpeningBox(false);
+                    setLuckyPrize({ name: "Diskon 50% Cake", code: "CAKE50OFF", desc: "Berlaku hari ini." });
+                }, 1500);
+            };
+
+            const handleRadar = () => {
+                setIsScanning(true);
+                setScannedStore(null);
+                setTimeout(() => {
+                    setIsScanning(false);
+                    setScannedStore(storeLocations[Math.floor(Math.random() * storeLocations.length)]);
+                }, 2000);
+            };
+
+            const redeemPoints = (cost, item) => {
+                if (points >= cost) {
+                    setPoints(p => p - cost);
+                    showAlert(`Berhasil menukarkan ${cost} poin untuk ${item}!`);
+                } else {
+                    showAlert(`Poin tidak cukup. Kumpulkan poin lagi ya!`);
+                }
+            };
+
+            return (
+                <div>
+                    {}
+                    <header className="app-header">
+                        <div className="logo-area">
+                            <img src={LOGO_URL} alt="Logo" onError={(e) => { e.target.src="https://placehold.co/100x100/14403a/FFF24B?text=DB"; }} />
+                            <span>Dandelion Bake</span>
+                        </div>
+                        <div className="header-actions">
+                            <i className="fas fa-search" onClick={() => setShowSearch(true)}></i>
+                            <i className="far fa-user-circle" onClick={() => setShowProfile(true)}></i>
+                        </div>
+                    </header>
+
+                    {}
+                    <div style={{ flex: 1 }}>
+                        
+                        {/* ===================== VIEW: HOME ===================== */}
+                        <div className={currentView === 'home-view' ? '' : 'hidden'}>
+                            <div className="hero-section">
+                                <div className="carousel-item">
+                                    <img src="https://images.unsplash.com/photo-1555507036-ab1e4006a2a0?auto=format&fit=crop&w=800&q=80" alt="Hero Banner" />
+                                </div>
+                            </div>
+
+                            <div className="featured-categories grid-2">
+                                <div className="featured-box" onClick={() => handleProductClick("Donat Favorit", 39500, "https://images.unsplash.com/photo-1551024601-bec78aea704b?w=400&q=80")}>
+                                    <img src="https://images.unsplash.com/photo-1551024601-bec78aea704b?w=400&q=80" alt="Donat" />
+                                    <h3>Donat Lumer</h3>
+                                </div>
+                                <div className="featured-box" onClick={() => handleProductClick("Signature Pastry", 45000, "https://images.unsplash.com/photo-1549903072-7e6e0bedb7fb?w=400&q=80")}>
+                                    <img src="https://images.unsplash.com/photo-1549903072-7e6e0bedb7fb?w=400&q=80" alt="Pastry" />
+                                    <h3>Our Signatures</h3>
+                                </div>
+                            </div>
+
+                            <div className="home-products">
+                                <h2 className="section-title">Best Sellers</h2>
+                                <div className="grid-2">
+                                    {[
+                                        { name: "4pc Cronut Box", price: 65000, img: "https://images.unsplash.com/photo-1551024601-bec78aea704b?w=300&q=80" },
+                                        { name: "Cronut & DKA", price: 60000, img: "https://images.unsplash.com/photo-1550617931-e17a7b70dce2?w=300&q=80" },
+                                        { name: "Signature Brownies", price: 35000, img: "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=300&q=80" },
+                                        { name: "Classic Croissant", price: 22000, img: "https://images.unsplash.com/photo-1549903072-7e6e0bedb7fb?w=300&q=80" }
+                                    ].map((prod, idx) => (
+                                        <div key={idx} className="product-card" onClick={() => handleProductClick(prod.name, prod.price, prod.img)}>
+                                            <img src={prod.img} alt={prod.name} />
+                                            <div className="product-info">
+                                                <div className="product-title">{prod.name}</div>
+                                                <div className="product-price">Rp {prod.price.toLocaleString('id-ID')}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ===================== VIEW: PRODUCT DETAIL ===================== */}
+                        <div className={currentView === 'product-detail-view' ? '' : 'hidden'}>
+                            <div className="pd-image-header">
+                                <img src={productDetail.img} alt="Product" style={{ height: '100%' }} />
+                            </div>
+                            <div className="pd-content">
+                                <h1>{productDetail.name}</h1>
+                                <div className="price">Rp {Number(productDetail.price).toLocaleString('id-ID')}</div>
+                                
+                                <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '20px' }}>Roti artisan panggang segar dengan bahan premium pilihan. Sempurna untuk menemani waktu santai Anda.</p>
+                                
+                                <div style={{ fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '10px' }}>Metode</div>
+                                <div className="btn-group">
+                                    <div className="btn-option active">Delivery</div>
+                                    <div className="btn-option">Pickup</div>
+                                </div>
+
+                                <div className="qty-row">
+                                    <span style={{ fontWeight: 'bold' }}>Jumlah</span>
+                                    <div className="qty-controls">
+                                        <button className="qty-btn">-</button>
+                                        <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>1</span>
+                                        <button className="qty-btn">+</button>
+                                    </div>
+                                </div>
+
+                                <button className="btn-primary" onClick={handleAddToCart}>
+                                    Tambahkan ke Keranjang
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* ===================== VIEW: REWARDS & PROMO ===================== */}
+                        <div className={currentView === 'rewards-view' ? '' : 'hidden'}>
+                            <div className="container" style={{ paddingTop: '20px' }}>
+                                <div className="member-card">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <span>Member Poin</span>
+                                        <span className="member-tier">GOLD</span>
+                                    </div>
+                                    <div className="member-points">{points.toLocaleString('id-ID')}</div>
+                                    <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>Tukarkan poin dengan produk gratis!</div>
+                                    
+                                    {/* Barcode Mockup */}
+                                    <div style={{ background: 'white', padding: '10px', borderRadius: '8px', marginTop: '20px', textAlign: 'center' }}>
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/8/84/EAN13.svg" style={{ height: '40px', opacity: 0.8 }} alt="barcode" />
+                                    </div>
+                                </div>
+
+                                <h2 className="section-title">Katalog Promo</h2>
+                                <div className="grid-2">
+                                    <div className="promo-card" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1555507036-ab1e4006a2a0?w=300&q=80)' }} onClick={() => redeemPoints(500, 'Croissant')}>
+                                        <div className="promo-content">
+                                            <span className="promo-badge">500 Pts</span>
+                                            <div className="promo-title">Gratis Croissant</div>
+                                        </div>
+                                    </div>
+                                    <div className="promo-card" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?w=300&q=80)' }} onClick={() => redeemPoints(1000, 'Whole Cake 50%')}>
+                                        <div className="promo-content">
+                                            <span className="promo-badge">1000 Pts</span>
+                                            <div className="promo-title">50% Whole Cake</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* Lucky Box Feature */}
+                                <div className="radar-box" style={{ background: '#fff9c4', marginTop: '20px' }}>
+                                    <h3 style={{ color: 'var(--color-green)', marginBottom: '5px' }}>🎁 Daily Lucky Box</h3>
+                                    <p style={{ fontSize: '0.85rem', color: '#555', marginBottom: '15px' }}>Buka gacha harianmu untuk ekstra voucher!</p>
+                                    
+                                    {!isOpeningBox && !luckyPrize && <button className="btn-primary" style={{ marginTop: 0 }} onClick={handleGacha}>Buka Sekarang</button>}
+                                    {isOpeningBox && <i className="fas fa-gift fa-spin" style={{ fontSize: '3rem', color: 'var(--color-green)' }}></i>}
+                                    {luckyPrize && (
+                                        <div style={{ background: 'white', padding: '15px', borderRadius: '12px', border: '2px dashed #AA7C11' }}>
+                                            <div style={{ fontWeight: 'bold', color: 'var(--color-green)', fontSize: '1.1rem' }}>{luckyPrize.name}</div>
+                                            <div style={{ background: '#f5f5f5', padding: '5px', borderRadius: '5px', margin: '10px 0', fontWeight: 'bold', letterSpacing: '1px' }}>{luckyPrize.code}</div>
+                                            <button style={{ border: 'none', background: 'transparent', color: '#14403a', fontWeight: 'bold' }} onClick={() => { showAlert('Kode Disalin!'); setLuckyPrize(null); }}>Salin & Tutup</button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ===================== VIEW: GROUP ORDER ===================== */}
+                        <div className={currentView === 'group-order-view' ? '' : 'hidden'}>
+                            <div className="container" style={{ paddingTop: '20px' }}>
+                                <div className="android-card">
+                                    <h2 className="section-title">Group Order AI</h2>
+                                    <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '20px' }}>Biar AI kami yang hitung porsi dan menu yang pas buat acaramu.</p>
+                                    
+                                    {groupStep === 1 && (
+                                        <div>
+                                            <label style={{ fontSize: '0.85rem', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Tipe Acara:</label>
+                                            <select className="search-input" value={groupEvent} onChange={(e) => setGroupEvent(e.target.value)}>
+                                                <option value="Kantor">Meeting / Kantor</option>
+                                                <option value="UlangTahun">Ulang Tahun</option>
+                                                <option value="Kasual">Piknik Santai</option>
+                                            </select>
+                                            
+                                            <label style={{ fontSize: '0.85rem', fontWeight: 'bold', display: 'block', marginBottom: '5px', marginTop: '10px' }}>Jumlah Orang:</label>
+                                            <input type="number" className="search-input" value={groupPax} onChange={(e) => setGroupPax(e.target.value)} />
+                                            
+                                            <button className="btn-primary" onClick={() => setGroupStep(2)}>Generate Paket</button>
+                                        </div>
+                                    )}
+
+                                    {groupStep === 2 && (
+                                        <div>
+                                            <div style={{ background: '#f9f9f9', padding: '15px', borderRadius: '12px', border: '1px solid #eee', marginBottom: '20px' }}>
+                                                <div style={{ fontSize: '0.7rem', background: 'var(--color-yellow)', padding: '3px 8px', borderRadius: '10px', display: 'inline-block', fontWeight: 'bold', marginBottom: '10px' }}>REKOMENDASI AI</div>
+                                                <h3 style={{ color: 'var(--color-green)', fontSize: '1.1rem', marginBottom: '5px' }}>{groupPackages[groupEvent].name}</h3>
+                                                <p style={{ fontSize: '0.8rem', color: '#555', marginBottom: '15px' }}>{groupPackages[groupEvent].items}</p>
+                                                
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #ddd', paddingTop: '10px' }}>
+                                                    <div><span style={{ fontSize: '0.7rem', display: 'block' }}>Total</span><b>Rp {groupPackages[groupEvent].price.toLocaleString()}</b></div>
+                                                    <div style={{ textAlign: 'right' }}><span style={{ fontSize: '0.7rem', display: 'block' }}>Per Pax</span><b style={{ color: '#2e7d32' }}>Rp {Math.round(groupPackages[groupEvent].price/groupPax).toLocaleString()}</b></div>
+                                                </div>
+                                            </div>
+                                            <button className="btn-primary" style={{ marginTop: 0 }} onClick={() => {
+                                                const pkg = groupPackages[groupEvent];
+                                                setCartItems([...cartItems, { id: `grp-${Date.now()}`, name: pkg.name, price: pkg.price, qty: 1, type: 'group', img: pkg.img }]);
+                                                setGroupStep(1); switchView('chart-view');
+                                            }}>Masukkan Keranjang</button>
+                                            <div style={{ textAlign: 'center', marginTop: '15px', fontSize: '0.9rem', color: 'var(--color-green)', fontWeight: 'bold' }} onClick={() => showAlert("Link patungan disalin!")}><i className="fas fa-share-alt"></i> Share Link Patungan</div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ===================== VIEW: CART & CHECKOUT ===================== */}
+                        <div className={currentView === 'chart-view' ? '' : 'hidden'}>
+                            <div className="container" style={{ paddingTop: '20px' }}>
+                                {!showPaymentGate ? (
+                                    <div>
+                                        <h2 className="section-title">Keranjang ({cartItems.length})</h2>
+                                        {cartItems.length === 0 ? (
+                                            <div style={{ textAlign: 'center', padding: '50px 0', color: '#aaa' }}>
+                                                <i className="fas fa-shopping-basket" style={{ fontSize: '4rem', marginBottom: '15px' }}></i>
+                                                <p>Keranjangmu masih kosong.</p>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                {cartItems.map(item => (
+                                                    <div className="cart-item" key={item.id}>
+                                                        <img src={item.img} alt={item.name} />
+                                                        <div className="cart-details">
+                                                            <div className="cart-title">{item.name}</div>
+                                                            <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '5px' }}>Qty: {item.qty}</div>
+                                                            <div className="cart-price">Rp {(item.price * item.qty).toLocaleString('id-ID')}</div>
+                                                        </div>
+                                                        <button className="delete-btn" onClick={() => removeFromCart(item.id)}><i className="fas fa-trash-alt"></i></button>
+                                                    </div>
+                                                ))}
+                                                
+                                                <div className="summary-card">
+                                                    <div className="summary-row"><span>Subtotal</span><span>Rp {cartItems.reduce((s,i) => s + (i.price*i.qty), 0).toLocaleString()}</span></div>
+                                                    <div className="summary-row"><span>Pajak (10%)</span><span>Rp {Math.round(cartItems.reduce((s,i) => s + (i.price*i.qty), 0) * 0.1).toLocaleString()}</span></div>
+                                                    <div className="summary-total"><span>Total Bayar</span><span>Rp {Math.round(cartItems.reduce((s,i) => s + (i.price*i.qty), 0) * 1.1).toLocaleString()}</span></div>
+                                                    <button className="btn-primary" onClick={() => setShowPaymentGate(true)}>Lanjut Pembayaran</button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="android-card">
+                                        <h2 className="section-title">Pilih Pembayaran</h2>
+                                        <div className={`payment-method ${selectedMethod === 'qris' ? 'active' : ''}`} onClick={() => setSelectedMethod('qris')}>
+                                            <div className="payment-icon"><i className="fas fa-qrcode"></i></div>
+                                            <div>
+                                                <div style={{ fontWeight: 'bold' }}>QRIS Pay</div>
+                                                <div style={{ fontSize: '0.75rem', color: '#666' }}>GoPay, OVO, Dana, ShopeePay</div>
+                                            </div>
+                                        </div>
+                                        <div className={`payment-method ${selectedMethod === 'bank' ? 'active' : ''}`} onClick={() => setSelectedMethod('bank')}>
+                                            <div className="payment-icon"><i className="fas fa-university"></i></div>
+                                            <div>
+                                                <div style={{ fontWeight: 'bold' }}>Virtual Account</div>
+                                                <div style={{ fontSize: '0.75rem', color: '#666' }}>BCA, Mandiri, BNI, BRI</div>
+                                            </div>
+                                        </div>
+
+                                        {selectedMethod === 'qris' && (
+                                            <div style={{ textAlign: 'center', margin: '20px 0' }}>
+                                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=DandelionBake" style={{ width: '150px', height: '150px', margin: '0 auto', border: '1px solid #ccc', borderRadius: '10px', padding: '10px' }} alt="QR" />
+                                                <p style={{ fontSize: '0.75rem', color: '#666', marginTop: '10px' }}>Scan menggunakan aplikasi e-wallet</p>
+                                            </div>
+                                        )}
+
+                                        <button className="btn-primary" onClick={processPayment}>Konfirmasi Bayar</button>
+                                        <div style={{ textAlign: 'center', marginTop: '15px', color: '#888', fontSize: '0.85rem' }} onClick={() => setShowPaymentGate(false)}>Batalkan</div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* ===================== VIEW: STORE / MAP ===================== */}
+                        <div className={currentView === 'store-view' ? '' : 'hidden'}>
+                            <div className="container" style={{ paddingTop: '20px' }}>
+                                <div className="radar-box">
+                                    <h3 style={{ color: 'var(--color-green)', marginBottom: '5px' }}>🛰️ Store Radar</h3>
+                                    <p style={{ fontSize: '0.85rem', color: '#555', marginBottom: '15px' }}>Lacak outlet terdekat dengan GPS.</p>
+                                    {!isScanning && !scannedStore && <button className="btn-primary" style={{ marginTop: 0 }} onClick={handleRadar}>Pindai Lokasi</button>}
+                                    {isScanning && <i className="fas fa-satellite-dish fa-spin" style={{ fontSize: '2.5rem', color: 'var(--color-green)' }}></i>}
+                                    {scannedStore && (
+                                        <div style={{ background: 'white', padding: '15px', borderRadius: '12px', textAlign: 'left', border: '1px solid #eee' }}>
+                                            <div style={{ color: 'var(--color-green)', fontWeight: 'bold' }}>{scannedStore.name}</div>
+                                            <div style={{ fontSize: '0.8rem', color: '#666', margin: '5px 0' }}>{scannedStore.address}</div>
+                                            <button style={{ background: 'var(--color-green)', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '15px', fontSize: '0.75rem', fontWeight: 'bold' }} onClick={() => { mapInstance.current?.setView([scannedStore.lat, scannedStore.lng], 15); setScannedStore(null); }}>Lihat Peta</button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <input type="text" className="search-input" placeholder="Cari area (ex: Waru)..." value={searchStoreQuery} onChange={(e) => setSearchStoreQuery(e.target.value)} />
+                                    <button style={{ background: 'var(--color-green)', color: 'white', border: 'none', borderRadius: '25px', padding: '0 20px', height: '42px', fontWeight: 'bold' }} onClick={handleSearchStore}>Cari</button>
+                                </div>
+                                
+                                <div id="map" className="map-wrapper" ref={mapRef}></div>
+
+                                <h2 className="section-title">List Outlet</h2>
+                                <div>
+                                    {storeLocations.map(store => (
+                                        <div id={`store-${store.id}`} key={store.id} className={`store-list-item ${highlightedStoreId === store.id ? 'store-highlight' : ''}`} onClick={() => mapInstance.current?.setView([store.lat, store.lng], 16)}>
+                                            <img src={store.img} alt={store.name} />
+                                            <div className="store-info">
+                                                <h4>{store.name}</h4>
+                                                <p><i className="fas fa-map-marker-alt"></i> {store.address}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    {}
+                    <nav className="bottom-nav">
+                        <div className={`nav-item ${currentView === 'home-view' || currentView === 'product-detail-view' ? 'active' : ''}`} onClick={() => switchView('home-view')}>
+                            <i className="fas fa-home"></i><span>Menu</span>
+                        </div>
+                        <div className={`nav-item ${currentView === 'store-view' ? 'active' : ''}`} onClick={() => switchView('store-view')}>
+                            <i className="fas fa-store"></i><span>Store</span>
+                        </div>
+                        <div className={`nav-item ${currentView === 'rewards-view' ? 'active' : ''}`} onClick={() => switchView('rewards-view')}>
+                            <i className="fas fa-gift"></i><span>Rewards</span>
+                        </div>
+                        <div className={`nav-item ${currentView === 'group-order-view' ? 'active' : ''}`} onClick={() => switchView('group-order-view')}>
+                            <i className="fas fa-users"></i><span>Group</span>
+                        </div>
+                        <div className={`nav-item ${currentView === 'chart-view' ? 'active' : ''}`} onClick={() => switchView('chart-view')}>
+                            {cartItems.length > 0 && <div className="cart-badge">{cartItems.length}</div>}
+                            <i className="fas fa-shopping-cart"></i><span>Cart</span>
+                        </div>
+                    </nav>
+
+                    {}
+                    
+                    {/* 1. Custom Alert/Confirm (Replaces Native Browsers Dialogs) */}
+                    {dialog.isOpen && (
+                        <div className="modal-overlay">
+                            <div className="android-dialog">
+                                <div className="dialog-content">{dialog.message}</div>
+                                <div className="dialog-actions">
+                                    {dialog.isConfirm && <button className="dialog-btn" onClick={closeDialog}>Batal</button>}
+                                    <button className="dialog-btn" onClick={() => { if(dialog.onConfirm) dialog.onConfirm(); closeDialog(); }}>OKE</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 2. Global Search Bottom Sheet */}
+                    {showSearch && (
+                        <div className="modal-overlay" onClick={() => setShowSearch(false)}>
+                            <div className="bottom-sheet" onClick={(e) => e.stopPropagation()}>
+                                <h3 style={{ marginBottom: '15px', color: 'var(--color-green)' }}>Cari Menu</h3>
+                                <input type="text" className="search-input" placeholder="Ketik cronut, brownies..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} autoFocus />
+                                
+                                {searchInput && (
+                                    <div style={{ marginTop: '10px' }}>
+                                        {[
+                                            { name: "4pc Cronut Box", price: 65000, img: "https://images.unsplash.com/photo-1551024601-bec78aea704b?w=100&q=80" },
+                                            { name: "Signature Brownies", price: 35000, img: "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=100&q=80" }
+                                        ].map((item, idx) => (
+                                            <div key={idx} style={{ display: 'flex', gap: '15px', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #eee' }} onClick={() => { handleProductClick(item.name, item.price, item.img); setShowSearch(false); }}>
+                                                <img src={item.img} style={{ width: '40px', height: '40px', borderRadius: '5px' }} />
+                                                <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{item.name}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 3. User Profile Bottom Sheet */}
+                    {showProfile && (
+                        <div className="modal-overlay" onClick={() => setShowProfile(false)}>
+                            <div className="bottom-sheet" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
+                                <i className="far fa-user-circle" style={{ fontSize: '4rem', color: 'var(--color-green)', marginBottom: '10px' }}></i>
+                                <h3 style={{ fontWeight: 'bold' }}>Dandelion Lovers</h3>
+                                <p style={{ fontSize: '0.8rem', color: '#666' }}>0821-4050-XXXX</p>
+                                
+                                <div style={{ background: 'var(--color-green)', color: 'white', padding: '15px', borderRadius: '12px', margin: '20px 0', display: 'flex', justifyContent: 'space-between' }}>
+                                    <div style={{ textAlign: 'left' }}><div style={{ fontSize:'0.7rem' }}>TIER</div><div style={{ color: 'var(--color-yellow)', fontWeight:'bold' }}>GOLD</div></div>
+                                    <div style={{ textAlign: 'right' }}><div style={{ fontSize:'0.7rem' }}>POIN</div><div style={{ fontWeight:'bold' }}>{points.toLocaleString()}</div></div>
+                                </div>
+                                
+                                <button className="btn-primary" style={{ background: '#f5f5f5', color: '#c62828' }} onClick={() => { showAlert('Berhasil Logout'); setShowProfile(false); }}>Keluar Akun</button>
+                            </div>
+                        </div>
+                    )}
+
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
